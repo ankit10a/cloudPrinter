@@ -24,6 +24,7 @@ def add_order():
 # Printer calls this to get next job
 @app.route("/orders", methods=["GET"])
 def get_order():
+     print("📥 Printer requested job!")
     if not print_jobs:
         return jsonify({"jobReady": False})
     
