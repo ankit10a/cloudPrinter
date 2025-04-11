@@ -3,14 +3,23 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 # In-memory print queue
-print_jobs = {
-    "order_101": {
+print_jobs = {}
+
+# Add print job (AI or client calls this)
+@app.route("/orders", methods=["POST"])
+def add_order():
+    data = request.json
+    if not data or "jobToken" not in data or "data" not in data:
+        return jsonify({"error": "Invalid job format"}), 400
+    
+    job_token = data["jobToken"]
+    print_jobs[job_token] = {
         "jobReady": True,
         "mediaTypes": ["text"],
-        "jobToken": "order_101",
-        "data": "Order #101\n1x Paneer Roll ₹80\n1x Limca ₹40\nTotal: ₹120\n\nThank you!"
+        "jobToken": job_token,
+        "data": data["data"]
     }
-}
+    return jsonify({"message": f"Job {job_token} added successfully"}), 200
 
 # Printer calls this to get next job
 @app.route("/orders", methods=["GET"])
@@ -29,7 +38,7 @@ def delete_order(job_token):
         return "", 204
     return "Job not found", 404
 
-# Optional: just to check server is live
+# Optional: Server live check
 @app.route("/", methods=["GET"])
 def home():
     return "🖨️ CloudPRNT Server is Running!"
