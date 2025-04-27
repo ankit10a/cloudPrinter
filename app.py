@@ -5,21 +5,25 @@ app = Flask(__name__)
 # In-memory print queue
 print_jobs = {}
 
-# Add a new print job
+# Add a new print job or handle printer heartbeat
 @app.route("/orders", methods=["POST"])
 def add_order():
     content = request.get_json(force=True, silent=True)
     print("📨 Incoming POST:", content)
 
-    # If the printer POSTs and content is missing or unexpected
-    if not content:
-        print("⚠️ Empty or invalid POST received from printer. Acknowledging.")
-        return jsonify({"status": "ignored"}), 200
+    # If the printer is POSTing heartbeat/status
+    if not content or 'status' in content:
+        if print_jobs:
+            print("🖨️ Job ready when printer asked!")
+            return jsonify({"jobReady": True}), 200
+        else:
+            print("🔄 No job ready yet for printer.")
+            return jsonify({"jobReady": False}), 200
 
+    # If it is a real print job coming from your ordering system
     job_token = content.get("jobToken")
     job_data = content.get("data")
 
-    # Handle real job POST (only from YOUR ordering system)
     if job_token and job_data:
         print_jobs[job_token] = {
             "jobReady": True,
@@ -30,11 +34,11 @@ def add_order():
         print(f"🖨️ New print job {job_token} added.")
         return jsonify({"message": f"Job {job_token} added successfully"}), 200
 
-    # If not a real job post, just acknowledge
-    print("⚙️ Printer sent POST without jobToken/data. Ignoring.")
+    # Unknown POST
+    print("⚙️ Unknown POST. Ignoring.")
     return jsonify({"status": "ignored"}), 200
 
-# Printer polls this to fetch next print job
+# Printer GETs the next print job
 @app.route("/orders", methods=["GET"])
 def get_order():
     print("📥 Printer requested job!")  # Logging for debug
