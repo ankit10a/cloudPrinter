@@ -1,65 +1,53 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, make_response
 
 app = Flask(__name__)
 
-# In-memory print queue
+# In-memory print queue (key: printer MAC, value: job data)
 print_jobs = {}
 
-# Add a new print job or handle printer heartbeat
-@app.route("/orders", methods=["POST"])
-def add_order():
-    content = request.get_json(force=True, silent=True)
-    print("📨 Incoming POST:", content)
-
-    # If the printer is POSTing heartbeat/status
-    if not content or 'status' in content:
-        if print_jobs:
-            print("🖨️ Job ready when printer asked!")
-            return jsonify({"jobReady": True}), 200
-        else:
-            print("🔄 No job ready yet for printer.")
-            return jsonify({"jobReady": False}), 200
-
-    # If it is a real print job coming from your ordering system
-    job_token = content.get("jobToken")
-    job_data = content.get("data")
-
-    if job_token and job_data:
-        print_jobs[job_token] = {
-            "jobReady": True,
-            "mediaTypes": ["text"],
-            "jobToken": job_token,
-            "data": job_data
-        }
-        print(f"🖨️ New print job {job_token} added.")
-        return jsonify({"message": f"Job {job_token} added successfully"}), 200
-
-    # Unknown POST
-    print("⚙️ Unknown POST. Ignoring.")
-    return jsonify({"status": "ignored"}), 200
-
-# Printer GETs the next print job
+# CloudPRNT polling endpoint (GET)
 @app.route("/orders", methods=["GET"])
 def get_order():
-    print("📥 Printer requested job!")  # Logging for debug
-    if not print_jobs:
-        return jsonify({"jobReady": False})
+    printer_mac = request.args.get("mac")
+    print(f"📥 Printer {printer_mac} requested job!")
 
-    job_token, job_data = next(iter(print_jobs.items()))
-    return jsonify(job_data)
-
-# Printer confirms print job done → delete it
-@app.route("/orders/<job_token>", methods=["DELETE"])
-def delete_order(job_token):
-    if job_token in print_jobs:
-        del print_jobs[job_token]
+    if not printer_mac or printer_mac not in print_jobs:
+        # No job → return 204 No Content
         return "", 204
-    return "Job not found", 404
 
-# Server health check
-@app.route("/", methods=["GET"])
+    # Get job data and send as plain text
+    job_data = print_jobs[printer_mac]
+    response = make_response(job_data)
+    response.headers["Content-Type"] = "text/plain"  # Required for printer
+    del print_jobs[printer_mac]  # Remove job after retrieval
+    return response
+
+# Job completion endpoint (DELETE)
+@app.route("/orders", methods=["DELETE"])
+def delete_order():
+    printer_mac = request.args.get("mac")
+    print(f"🗑️ Printer {printer_mac} deleted job.")
+    return "", 200
+
+# Add a print job (called by your ordering system)
+@app.route("/orders", methods=["POST"])
+def add_order():
+    content = request.json
+    printer_mac = content.get("printerMAC")
+    job_data = content.get("data")
+
+    if printer_mac and job_data:
+        # Escape StarPRNT commands if needed (e.g., \x1b for ESC)
+        print_jobs[printer_mac] = job_data
+        print(f"🖨️ Added job for printer {printer_mac}: {job_data}")
+        return "", 200
+    else:
+        return "Invalid request", 400
+
+# Health check
+@app.route("/")
 def home():
-    return "🖨️ CloudPRNT Server is Running!"
+    return "CloudPRNT Server Running!"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
