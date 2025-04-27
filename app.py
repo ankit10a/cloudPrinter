@@ -12,14 +12,10 @@ def handle_post():
     print("📨 Incoming POST:", content)
 
     # Case 1: Printer is sending a heartbeat/status update
-    if content and 'status' in content:
+ if content and 'status' in content:
         printer_mac = content.get('printerMAC')
-        if printer_mac in print_jobs:
+        return jsonify({"jobReady": printer_mac in print_jobs}), 200
             print("🖨️ Job ready for printer", printer_mac)
-            return jsonify({"jobReady": True}), 200
-        else:
-            print("🔄 No job for printer", printer_mac)
-            return jsonify({"jobReady": False}), 200
 
     # Case 2: Your ordering system is adding a job
     printer_mac = content.get("printerMAC")
@@ -40,17 +36,14 @@ def get_order():
     print(f"📥 Printer {printer_mac} requested job")
     
     if printer_mac in print_jobs:
-        job_data = print_jobs[printer_mac]
-        del print_jobs[printer_mac]  # Remove after retrieval
-        return job_data, 200, {"Content-Type": "text/plain"}  # <-- Critical!
-    else:
-        return "", 204  # No content
+        job_data = print_jobs.pop(printer_mac)
+         return job_data, 200, {"Content-Type": "application/vnd.star.starprnt"}
+    return "", 204  
 
 # Printer confirms job completion
 @app.route("/orders", methods=["DELETE"])
 def delete_order():
-    printer_mac = request.args.get("mac")
-    print(f"🗑️ Printer {printer_mac} deleted job")
+   
     return "", 200
 
 # Health check
