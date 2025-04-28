@@ -32,9 +32,15 @@ def handle_post():
 def get_order():
     printer_mac = request.args.get("mac")
     if printer_mac in print_jobs:
-        job = print_jobs[printer_mac]
-        return jsonify(job), 200
+        job_data = print_jobs.pop(printer_mac)
+        response = {
+            "jobToken": f"{printer_mac}_token",
+            "mediaTypes": ["application/vnd.star.starprnt"],
+            "data": job_data
+        }
+        return jsonify(response), 200
     return jsonify({"jobReady": False}), 204
+
 
 @app.route("/orders", methods=["DELETE"])
 def delete_order():
