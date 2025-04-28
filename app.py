@@ -44,7 +44,7 @@ def get_order():
         return jsonify(response), 200
     else:
         print(f"❌ No job found for {printer_mac}")
-        return jsonify({"jobReady": False}), 204
+        return jsonify({"jobReady": False}), 200
 
 
 
