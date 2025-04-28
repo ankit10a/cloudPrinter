@@ -34,9 +34,11 @@ def get_order():
     if printer_mac in print_jobs:
         job_data = print_jobs.pop(printer_mac)
         response = {
-            "jobToken": f"{printer_mac}_token",
-            "mediaTypes": ["application/vnd.star.starprnt"],
-            "data": job_data
+         "jobReady": True,
+            "jobToken": f"token_{printer_mac.replace(':', '')}",
+            "mediaTypes": ["text/plain"],
+            "jobType": "raw",
+            "printData": job_data
         }
         print(f"📤 Sending job to {printer_mac}: {response}")
         return jsonify(response), 200
