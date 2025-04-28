@@ -36,7 +36,7 @@ def get_order():
         response = {
          "jobReady": True,
             "jobToken": f"token_{printer_mac.replace(':', '')}",
-            "mediaTypes": ["text/plain"],
+            "mediaTypes": ["application/vnd.star.starprnt"],
             "jobType": "raw",
             "printData": job_data
         }
