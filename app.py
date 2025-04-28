@@ -38,8 +38,12 @@ def get_order():
             "mediaTypes": ["application/vnd.star.starprnt"],
             "data": job_data
         }
+        print(f"📤 Sending job to {printer_mac}: {response}")
         return jsonify(response), 200
-    return jsonify({"jobReady": False}), 204
+    else:
+        print(f"❌ No job found for {printer_mac}")
+        return jsonify({"jobReady": False}), 204
+
 
 
 @app.route("/orders", methods=["DELETE"])
